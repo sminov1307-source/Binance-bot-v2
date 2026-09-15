@@ -1,20 +1,969 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b1020"><title>Binance AI Signal Bot V2</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f5f7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:780px;margin:auto;padding:14px}.card{background:#151c31;border:1px solid #293451;border-radius:18px;padding:15px;margin:11px 0}h1{margin:3px 0;font-size:24px}.muted,.small{color:#9eabc5;font-size:12px}.row{display:flex;gap:8px;flex-wrap:wrap}select,button{padding:12px;border:0;border-radius:12px;font-size:14px}select{background:#222c45;color:#fff;flex:1;min-width:125px}button{background:#2f80ed;color:#fff;font-weight:800}.signal{text-align:center;font-size:31px;font-weight:900;padding:14px;border-radius:14px;margin-top:11px;background:#202a43}.buy{color:#6ee7a1}.sell{color:#ff8585}.wait{color:#ffd166}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:#202a43;padding:10px;border-radius:12px}.metric b{display:block;font-size:16px;margin-top:3px}.bar{height:22px;background:#202a43;border-radius:99px;position:relative;overflow:hidden;margin:10px 0}.fill{height:100%;width:50%;transition:.3s}.center{position:absolute;left:50%;top:0;height:100%;width:2px;background:#fff8;z-index:2}.scale{display:flex;justify-content:space-between;font-size:11px;color:#9eabc5}.strength{text-align:center;font-weight:800;margin:7px}.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px}td,th{padding:8px 5px;border-bottom:1px solid #2a3550;text-align:left}th{color:#9eabc5}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6ee7a1;margin-right:5px}.off{background:#ff8585}.hint{line-height:1.45}.tfbar{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px}.tfbar button{flex:0 0 auto;padding:9px 12px;background:#222c45}.tfbar button.active{background:#2f80ed}.chartbox{height:300px;background:#0d1427;border-radius:14px;overflow:hidden;position:relative}.chartbox canvas{width:100%;height:100%;display:block}.chartinfo{display:flex;justify-content:space-between;color:#9eabc5;font-size:11px;margin-top:6px}</style></head><body><main><h1>🤖 Binance Signal Bot V2</h1><div class="muted">15s • 30s • 1m • 3m • 5m • 15m • 1h • 4h · RSI + EMA20/50 + MACD + объём</div><div class="card"><div class="row"><select id="s" onchange="if(window.lastRows) go()"><option>BTCUSDT</option><option>ETHUSDT</option><option>BNBUSDT</option><option>SOLUSDT</option><option>XRPUSDT</option><option>LTCUSDT</option></select><button onclick="go()">АНАЛИЗ</button><button onclick="startLive()">LIVE</button></div><div class="tfbar" id="tfbar"><button data-tf="15s" onclick="setTF('15s')">15s</button><button data-tf="30s" onclick="setTF('30s')">30s</button><button data-tf="1m" onclick="setTF('1m')">1m</button><button data-tf="3m" onclick="setTF('3m')">3m</button><button data-tf="5m" onclick="setTF('5m')">5m</button><button data-tf="15m" onclick="setTF('15m')">15m</button><button data-tf="1h" onclick="setTF('1h')">1h</button><button data-tf="4h" onclick="setTF('4h')">4h</button></div><div id="st" class="small" style="margin-top:9px">Готов. Нажми АНАЛИЗ.</div><div id="sig" class="signal wait">WAIT</div><div class="bar"><div id="fill" class="fill"></div><div class="center"></div></div><div class="scale"><span>−100 SELL</span><span>0 WAIT</span><span>+100 BUY</span></div><div id="strength" class="strength">Сила сигнала: —</div></div><div class="card"><h3>График <span id="chartTf">15m</span></h3><div class="chartbox"><canvas id="chart"></canvas></div><div class="chartinfo"><span id="chartMin">—</span><span>Цена</span><span id="chartMax">—</span></div></div><div class="card"><h3>Основные показатели</h3><div class="grid"><div class="metric">Цена<b id="p">—</b></div><div class="metric">RSI<b id="r">—</b></div><div class="metric">EMA 20<b id="e20">—</b></div><div class="metric">EMA 50<b id="e50">—</b></div><div class="metric">MACD<b id="m">—</b></div><div class="metric">Объём<b id="v">—</b></div></div></div><div class="card"><h3>Мульти‑таймфрейм</h3><div class="scroll"><table><thead><tr><th>TF</th><th>RSI</th><th>EMA</th><th>MACD</th><th>Объём</th><th>Баллы</th><th>Сигнал</th></tr></thead><tbody id="tb"><tr><td colspan="7">Нажми АНАЛИЗ</td></tr></tbody></table></div></div><div class="card"><h3>Вход / защита</h3><div class="grid"><div class="metric">Цена входа<b id="entry">—</b></div><div class="metric">Стоп‑лосс<b id="sl">—</b></div><div class="metric">TP1<b id="tp1">—</b></div><div class="metric">TP2<b id="tp2">—</b></div></div><div class="small hint" style="margin-top:9px">Уровни рассчитываются технически от ATR/волатильности и не гарантируют прибыль. Автоторговли нет.</div></div><div class="card small hint"><b>Важно:</b> 1m/3m/5m/15m/1h/4h берутся из Binance Kline API. 15s и 30s собираются из потока сделок Binance прямо на телефоне, поэтому им нужно несколько секунд LIVE‑данных для нормального расчёта.<br><br>Сигнал — технический анализ, а не гарантия движения цены.</div></main><script>
-const API="https://api.binance.com/api/v3/klines",WS="wss://stream.binance.com:9443/ws/";const $=x=>document.getElementById(x);let socket=null,live={};
-function ema(a,n){if(a.length<n)return a.at(-1)||0;let k=2/(n+1),e=a[0];for(let i=1;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
-function rsi(a,n=14){if(a.length<n+2)return 50;let g=0,l=0;for(let i=1;i<=n;i++){let d=a[i]-a[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}g/=n;l/=n;for(let i=n+1;i<a.length;i++){let d=a[i]-a[i-1];g=(g*(n-1)+Math.max(d,0))/n;l=(l*(n-1)+Math.max(-d,0))/n}return l?100-100/(1+g/l):100}
-function macd(a){let fast=ema(a.slice(-80),12),slow=ema(a.slice(-80),26);let line=fast-slow;let hist=[];for(let i=Math.max(26,a.length-40);i<a.length;i++){let q=a.slice(0,i+1),z=ema(q.slice(-80),12)-ema(q.slice(-80),26);hist.push(z)}let sig=ema(hist,9);return{line,signal:sig,hist:line-sig}}
-function atr(k,n=14){if(k.length<n+1)return 0;let tr=[];for(let i=1;i<k.length;i++){let h=+k[i][2],l=+k[i][3],pc=+k[i-1][4];tr.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)))}return tr.slice(-n).reduce((a,b)=>a+b,0)/Math.min(n,tr.length)}
-async function get(sym,tf){let q=await fetch(API+"?symbol="+sym+"&interval="+tf+"&limit=180",{cache:"no-store"});if(!q.ok)throw Error("Binance HTTP "+q.status);return q.json()}
-function calcFrom(k){let c=k.map(x=>+x[4]),vol=k.map(x=>+x[5]),p=c.at(-1),e20=ema(c.slice(-100),20),e50=ema(c,50),R=rsi(c),M=macd(c),avg=vol.slice(-21,-1).reduce((a,b)=>a+b,0)/Math.max(1,vol.slice(-21,-1).length),vr=vol.at(-1)/avg;let score=0;score+=p>e20?18:-18;score+=e20>e50?18:-18;score+=R>=55?15:R<=45?-15:0;score+=M.hist>0?15:-15;score+=M.hist>0&&M.line>0?10:M.hist<0&&M.line<0?-10:0;if(vr>1.2)score+=(p>c.at(-2)?12:-12);score=Math.max(-100,Math.min(100,Math.round(score)));let sig=score>=30?"BUY":score<=-30?"SELL":"WAIT";return{p,e20,e50,R,M,vol:vol.at(-1),vr,score,sig,atr:atr(k),trend:p>e20&&e20>e50?"UP":p<e20&&e20<e50?"DOWN":"FLAT"}}
-function fakeShort(sym,sec){let a=live[sym]?.prices||[];if(a.length<20)return null;let p=a.at(-1),k=a.map((x,i)=>[i,p,p,p,p,1]);let x=calcFrom(k);x.tf=sec+"s";return x}
-function f(x){return Number(x).toLocaleString("ru-RU",{maximumFractionDigits:6})}
-function sigClass(s){return s.toLowerCase()}
-function strength(score){let n=Math.abs(score);return n>=75?"ОЧЕНЬ СИЛЬНЫЙ":n>=55?"СИЛЬНЫЙ":n>=30?"УВЕРЕННЫЙ":n>=15?"СЛАБЫЙ":"НЕТ ЧЁТКОГО"}
-let selectedTF="15m"; let chartRows=[];
-function setTF(tf){selectedTF=tf;document.querySelectorAll("#tfbar button").forEach(b=>b.classList.toggle("active",b.dataset.tf===tf));$("chartTf").textContent=tf; drawChart(chartRows); if(window.lastRows){let z=window.lastRows.find(a=>a[0]===tf); if(z) renderMain(z[1]);}}
-function drawChart(rows){const c=$("chart");if(!c)return;const box=c.parentElement,dpr=devicePixelRatio||1,w=box.clientWidth,h=box.clientHeight;c.width=w*dpr;c.height=h*dpr;const ctx=c.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);if(!rows||rows.length<2){ctx.fillStyle="#9eabc5";ctx.font="14px sans-serif";ctx.fillText("Нажми АНАЛИЗ — график загрузится",16,30);return}const ps=rows.map(x=>x[4]||x[1]);const min=Math.min(...ps),max=Math.max(...ps),pad=20;ctx.strokeStyle="#2a3550";ctx.lineWidth=1;for(let i=1;i<5;i++){let y=pad+(h-2*pad)*i/5;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}ctx.strokeStyle="#6ea8fe";ctx.lineWidth=2;ctx.beginPath();ps.forEach((p,i)=>{let x=i*(w-1)/(ps.length-1),y=pad+(max-p)/(max-min||1)*(h-2*pad);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();$("chartMin").textContent=f(min);$("chartMax").textContent=f(max)}
-function renderMain(x){$("p").textContent=f(x.p);$("r").textContent=x.R.toFixed(1);$("e20").textContent=f(x.e20);$("e50").textContent=f(x.e50);$("m").textContent=x.M.hist.toFixed(6);$("v").textContent=f(x.vol);$("sig").textContent=x.sig;$("sig").className="signal "+sigClass(x.sig);$("strength").textContent="Сила сигнала: "+strength(x.score)+" ("+x.score+")";$('fill').style.width=((x.score+100)/2)+"%";$('fill').className="fill "+sigClass(x.sig);let risk=x.atr||x.p*.005,entry=x.p,sl=x.sig==="BUY"?entry-risk*1.2:entry+risk*1.2,tp1=x.sig==="BUY"?entry+risk*1.2:entry-risk*1.2,tp2=x.sig==="BUY"?entry+risk*2.2:entry-risk*2.2;$('entry').textContent=f(entry);$('sl').textContent=f(sl);$('tp1').textContent=f(tp1);$('tp2').textContent=f(tp2)}
-async function go(){let s=$("s").value;$('st').innerHTML='<span class="dot"></span>Получаю Binance…';$('sig').textContent='…';try{let rows=await Promise.all(["1m","3m","5m","15m","1h","4h"].map(async tf=>{let raw=await get(s,tf);return [tf,calcFrom(raw),raw]})); window.lastRows=rows.map(r=>[r[0],r[1]]); let rr=rows.find(x=>x[0]===selectedTF)||rows.find(x=>x[0]==="15m"); chartRows=(rr?rr[2].slice(-80).map(k=>[+k[0],+k[4],+k[4]]):[]); drawChart(chartRows);let main=(rows.find(x=>x[0]===selectedTF)||rows.find(x=>x[0]==="15m"))[1];renderMain(main);let h='';for(const [tf,x] of rows)h+=`<tr><td>${tf}</td><td>${x.R.toFixed(1)}</td><td>${x.trend}</td><td>${x.M.hist.toFixed(4)}</td><td>${x.vr.toFixed(2)}×</td><td>${x.score>0?'+':''}${x.score}</td><td class="${sigClass(x.sig)}">${x.sig}</td></tr>`;let a=fakeShort(s,15),b=fakeShort(s,30);if(a)h=`<tr><td>15s</td><td>${a.R.toFixed(1)}</td><td>${a.trend}</td><td>${a.M.hist.toFixed(4)}</td><td>LIVE</td><td>${a.score>0?'+':''}${a.score}</td><td class="${sigClass(a.sig)}">${a.sig}</td></tr>`+h;if(b)h=`<tr><td>30s</td><td>${b.R.toFixed(1)}</td><td>${b.trend}</td><td>${b.M.hist.toFixed(4)}</td><td>LIVE</td><td>${b.score>0?'+':''}${b.score}</td><td class="${sigClass(b.sig)}">${b.sig}</td></tr>`+h;$('tb').innerHTML=h;$('st').innerHTML='<span class="dot"></span>Данные получены '+new Date().toLocaleTimeString('ru-RU')+' · LIVE можно включить для 15s/30s';setTF(selectedTF);startLive()}catch(e){$('st').textContent='Ошибка: '+e.message;$('sig').textContent='WAIT';$('sig').className='signal wait'}}
-function startLive(){let s=$("s").value.toLowerCase();if(socket)try{socket.close()}catch(e){};live[s]={prices:[],ticks:[]};socket=new WebSocket(WS+s+'@trade');socket.onopen=()=>{$('st').innerHTML='<span class="dot"></span>LIVE: поток сделок подключён'};socket.onmessage=e=>{let d=JSON.parse(e.data),p=+d.p,now=Date.now(),q=live[s];q.prices.push(p);q.ticks.push({t:now,p});q.prices=q.prices.slice(-180);q.ticks=q.ticks.filter(x=>now-x.t<60000);if(q.prices.length>=30){let a=fakeShort(s,15),b=fakeShort(s,30);if(a&&b){let rows=[['15s',a],['30s',b]];for(const tf of ['1m','3m','5m','15m','1h','4h']){let old=[...$('tb').rows].find(r=>r.cells[0]?.textContent===tf);if(old)rows.push([tf,{score:parseInt(old.cells[5].textContent),sig:old.cells[6].textContent,R:parseFloat(old.cells[1].textContent),trend:old.cells[2].textContent,M:{hist:parseFloat(old.cells[3].textContent)},vr:parseFloat(old.cells[4].textContent)||0}])}$('tb').innerHTML=rows.map(([tf,x])=>`<tr><td>${tf}</td><td>${x.R.toFixed(1)}</td><td>${x.trend}</td><td>${x.M.hist.toFixed(4)}</td><td>${typeof x.vr==='number'?x.vr.toFixed(2)+'×':'LIVE'}</td><td>${x.score>0?'+':''}${x.score}</td><td class="${sigClass(x.sig)}">${x.sig}</td></tr>`).join('');renderMain(a)}}};socket.onerror=()=>{$('st').textContent='LIVE: ошибка подключения'}}
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Binance AI Signal Bot V3</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0b1020;color:#f5f7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:820px;margin:auto;padding:14px}
+.card{background:#151c31;border:1px solid #293451;border-radius:18px;padding:15px;margin:11px 0}
+h1{margin:3px 0;font-size:24px}
+h3{margin-top:4px}
+.small,.muted{color:#9eabc5;font-size:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+select,button{padding:12px;border:0;border-radius:12px;font-size:14px}
+select{background:#222c45;color:#fff;flex:1;min-width:130px}
+button{background:#2f80ed;color:#fff;font-weight:800}
+.tfbar{display:flex;gap:6px;overflow-x:auto;padding:8px 0}
+.tfbar button{background:#222c45;flex:0 0 auto}
+.tfbar button.active{background:#2f80ed}
+.signal{text-align:center;font-size:31px;font-weight:900;padding:14px;border-radius:14px;margin-top:11px;background:#202a43}
+.buy{color:#6ee7a1}.sell{color:#ff8585}.wait{color:#ffd166}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:#202a43;padding:10px;border-radius:12px}
+.metric b{display:block;font-size:16px;margin-top:3px}
+.bar{height:22px;background:#202a43;border-radius:99px;overflow:hidden;margin:10px 0}
+.fill{height:100%;transition:.3s}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:#9eabc5}
+.strength{text-align:center;font-weight:800;margin:7px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:650px}
+td,th{padding:8px 5px;border-bottom:1px solid #2a3550;text-align:left}
+th{color:#9eabc5}
+.chartbox{height:310px;background:#0d1427;border-radius:14px;overflow:hidden}
+canvas{width:100%;height:100%;display:block}
+.status{text-align:center;padding:12px;border-radius:12px;font-weight:900;margin-top:10px}
+.enter{background:#123d2b;color:#6ee7a1}
+.waitbox{background:#403718;color:#ffd166}
+.noenter{background:#421f25;color:#ff8585}
+.reason{line-height:1.55}
+</style>
+</head>
+
+<body>
+<main>
+
+<h1>🤖 Binance AI Signal Bot V3</h1>
+<div class="muted">
+15s • 30s • 1m • 3m • 5m • 15m • 1h • 4h ·
+RSI + EMA20/50 + MACD + Volume + ATR + Structure
+</div>
+
+<div class="card">
+<div class="row">
+<select id="s">
+<option>BTCUSDT</option>
+<option>ETHUSDT</option>
+<option>BNBUSDT</option>
+<option>SOLUSDT</option>
+<option>XRPUSDT</option>
+<option>DOGEUSDT</option>
+<option>ADAUSDT</option>
+<option>TRXUSDT</option>
+<option>TONUSDT</option>
+<option>LINKUSDT</option>
+<option>AVAXUSDT</option>
+<option>LTCUSDT</option>
+</select>
+<button onclick="go()">АНАЛИЗ</button>
+<button onclick="startLive()">LIVE</button>
+</div>
+
+<div class="tfbar" id="tfbar">
+<button data-tf="15s" onclick="setTF('15s')">15s</button>
+<button data-tf="30s" onclick="setTF('30s')">30s</button>
+<button data-tf="1m" onclick="setTF('1m')">1m</button>
+<button data-tf="3m" onclick="setTF('3m')">3m</button>
+<button data-tf="5m" onclick="setTF('5m')">5m</button>
+<button data-tf="15m" onclick="setTF('15m')">15m</button>
+<button data-tf="1h" onclick="setTF('1h')">1h</button>
+<button data-tf="4h" onclick="setTF('4h')">4h</button>
+</div>
+
+<div id="st" class="small">Готов. Нажми АНАЛИЗ.</div>
+
+<div id="sig" class="signal wait">WAIT</div>
+
+<div id="decision" class="status waitbox">
+🟡 ЖДАТЬ
+</div>
+
+<div class="bar">
+<div id="fill" class="fill"></div>
+</div>
+
+<div class="scale">
+<span>−100 SELL</span>
+<span>0 WAIT</span>
+<span>+100 BUY</span>
+</div>
+
+<div id="strength" class="strength">
+Smart Score: —
+</div>
+</div>
+
+<div class="card">
+<h3>📈 График <span id="chartTf">15m</span></h3>
+<div class="chartbox">
+<canvas id="chart"></canvas>
+</div>
+</div>
+
+<div class="card">
+<h3>🧠 Основные показатели</h3>
+<div class="grid">
+<div class="metric">Цена<b id="p">—</b></div>
+<div class="metric">RSI<b id="r">—</b></div>
+<div class="metric">EMA 20<b id="e20">—</b></div>
+<div class="metric">EMA 50<b id="e50">—</b></div>
+<div class="metric">MACD<b id="m">—</b></div>
+<div class="metric">Объём<b id="v">—</b></div>
+<div class="metric">ATR<b id="atr">—</b></div>
+<div class="metric">Структура<b id="structure">—</b></div>
+</div>
+</div>
+
+<div class="card">
+<h3>🎯 Почему такой сигнал</h3>
+<div id="reason" class="reason">
+Нажми АНАЛИЗ.
+</div>
+</div>
+
+<div class="card">
+<h3>📊 Мульти-таймфрейм</h3>
+<div class="scroll">
+<table>
+<thead>
+<tr>
+<th>TF</th>
+<th>RSI</th>
+<th>EMA</th>
+<th>MACD</th>
+<th>Volume</th>
+<th>Score</th>
+<th>Signal</th>
+</tr>
+</thead>
+<tbody id="tb">
+<tr><td colspan="7">Нажми АНАЛИЗ</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="card">
+<h3>🛡️ Вход / защита</h3>
+<div class="grid">
+<div class="metric">Entry<b id="entry">—</b></div>
+<div class="metric">Stop Loss<b id="sl">—</b></div>
+<div class="metric">TP1<b id="tp1">—</b></div>
+<div class="metric">TP2<b id="tp2">—</b></div>
+</div>
+<div id="rr" class="small" style="margin-top:9px">R/R: —</div>
+</div>
+
+<div class="card small">
+<b>Важно:</b>
+бот не покупает и не продаёт автоматически.
+Он анализирует рынок и выдаёт технический сигнал.
+Сигнал не гарантирует прибыль.
+</div>
+
+</main>
+
+<script>
+const API="https://api.binance.com/api/v3/klines";
+const WS="wss://stream.binance.com:9443/ws/";
+
+const $=id=>document.getElementById(id);
+
+let socket=null;
+let live={};
+let selectedTF="15m";
+let lastRows=[];
+let chartRows=[];
+
+function ema(a,n){
+ if(!a.length)return 0;
+ if(a.length<n)return a.at(-1);
+ let k=2/(n+1),e=a[0];
+ for(let i=1;i<a.length;i++)e=a[i]*k+e*(1-k);
+ return e;
+}
+
+function rsi(a,n=14){
+ if(a.length<n+2)return 50;
+
+ let g=0,l=0;
+
+ for(let i=1;i<=n;i++){
+   let d=a[i]-a[i-1];
+   g+=Math.max(d,0);
+   l+=Math.max(-d,0);
+ }
+
+ g/=n;
+ l/=n;
+
+ for(let i=n+1;i<a.length;i++){
+   let d=a[i]-a[i-1];
+   g=(g*(n-1)+Math.max(d,0))/n;
+   l=(l*(n-1)+Math.max(-d,0))/n;
+ }
+
+ if(l===0)return g===0?50:100;
+
+ return 100-100/(1+g/l);
+}
+
+function macd(a){
+ let line=ema(a.slice(-100),12)-ema(a.slice(-100),26);
+ let hist=[];
+
+ for(let i=Math.max(30,a.length-50);i<a.length;i++){
+   let q=a.slice(0,i+1);
+   hist.push(
+     ema(q.slice(-100),12)-ema(q.slice(-100),26)
+   );
+ }
+
+ let signal=ema(hist,9);
+
+ return {
+   line,
+   signal,
+   hist:line-signal
+ };
+}
+
+function atr(k,n=14){
+ if(k.length<n+1)return 0;
+
+ let tr=[];
+
+ for(let i=1;i<k.length;i++){
+   let h=+k[i][2];
+   let l=+k[i][3];
+   let pc=+k[i-1][4];
+
+   tr.push(
+     Math.max(
+       h-l,
+       Math.abs(h-pc),
+       Math.abs(l-pc)
+     )
+   );
+ }
+
+ return tr.slice(-n).reduce((a,b)=>a+b,0)/Math.min(n,tr.length);
+}
+
+function structure(k){
+ if(k.length<12)return "NEUTRAL";
+
+ let highs=[];
+ let lows=[];
+
+ for(let i=2;i<k.length-2;i++){
+
+   let h=+k[i][2];
+   let l=+k[i][3];
+
+   if(
+     h>+k[i-1][2] &&
+     h>+k[i+1][2]
+   ) highs.push(h);
+
+   if(
+     l<+k[i-1][3] &&
+     l<+k[i+1][3]
+   ) lows.push(l);
+ }
+
+ if(highs.length<2||lows.length<2)return "NEUTRAL";
+
+ let h1=highs.at(-2);
+ let h2=highs.at(-1);
+ let l1=lows.at(-2);
+ let l2=lows.at(-1);
+
+ if(h2>h1&&l2>l1)return "BULLISH";
+ if(h2<h1&&l2<l1)return "BEARISH";
+
+ return "RANGE";
+}
+
+function levels(k){
+ let highs=[];
+ let lows=[];
+
+ for(let i=Math.max(2,k.length-60);i<k.length-2;i++){
+
+   if(
+     +k[i][2]>+k[i-1][2] &&
+     +k[i][2]>+k[i+1][2]
+   ) highs.push(+k[i][2]);
+
+   if(
+     +k[i][3]<+k[i-1][3] &&
+     +k[i][3]<+k[i+1][3]
+   ) lows.push(+k[i][3]);
+ }
+
+ return {
+   resistance:highs.at(-1)||null,
+   support:lows.at(-1)||null
+ };
+}
+
+function calcFrom(k){
+
+ let c=k.map(x=>+x[4]);
+ let vol=k.map(x=>+x[5]);
+
+ let p=c.at(-1);
+
+ let e20=ema(c.slice(-100),20);
+ let e50=ema(c,50);
+
+ let R=rsi(c);
+ let M=macd(c);
+ let A=atr(k);
+
+ let avg=vol.slice(-21,-1)
+   .reduce((a,b)=>a+b,0)/
+   Math.max(1,vol.slice(-21,-1).length);
+
+ let vr=avg?vol.at(-1)/avg:1;
+
+ let S=structure(k);
+
+ let score=0;
+
+ if(p>e20)score+=15;
+ else score-=15;
+
+ if(e20>e50)score+=18;
+ else score-=18;
+
+ if(R>=55&&R<=72)score+=14;
+ else if(R<=45&&R>=28)score-=14;
+ else if(R>72)score-=4;
+ else if(R<28)score+=4;
+
+ if(M.hist>0)score+=15;
+ else score-=15;
+
+ if(M.line>0&&M.hist>0)score+=8;
+ else if(M.line<0&&M.hist<0)score-=8;
+
+ if(S==="BULLISH")score+=15;
+ else if(S==="BEARISH")score-=15;
+
+ if(vr>=1.2){
+   if(p>c.at(-2))score+=10;
+   else score-=10;
+ }
+
+ if(vr<0.65){
+   score=Math.round(score*0.72);
+ }
+
+ score=Math.max(-100,Math.min(100,Math.round(score)));
+
+ let sig=
+   score>=30?"BUY":
+   score<=-30?"SELL":
+   "WAIT";
+
+ return {
+   p,e20,e50,R,M,
+   vol:vol.at(-1),
+   vr,
+   score,
+   sig,
+   atr:A,
+   trend:
+     p>e20&&e20>e50?"UP":
+     p<e20&&e20<e50?"DOWN":
+     "FLAT",
+   structure:S,
+   levels:levels(k)
+ };
+}
+
+async function get(sym,tf){
+
+ let q=await fetch(
+   API+
+   "?symbol="+sym+
+   "&interval="+tf+
+   "&limit=180",
+   {cache:"no-store"}
+ );
+
+ if(!q.ok)
+   throw Error("Binance HTTP "+q.status);
+
+ return q.json();
+}
+
+/* REAL 15s / 30s candles */
+
+function shortCalc(sym,sec){
+
+ let a=live[sym]?.ticks||[];
+
+ if(a.length<30)return null;
+
+ let buckets={};
+
+ for(const t of a){
+
+   let b=
+     Math.floor(
+       t.t/(sec*1000)
+     )*(sec*1000);
+
+   if(!buckets[b])buckets[b]=[];
+
+   buckets[b].push(t);
+ }
+
+ let keys=
+   Object.keys(buckets)
+   .map(Number)
+   .sort((a,b)=>a-b);
+
+ let k=[];
+
+ for(const key of keys){
+
+   const arr=buckets[key];
+
+   const ps=arr.map(x=>x.p);
+
+   k.push([
+     key,
+     ps[0],
+     Math.max(...ps),
+     Math.min(...ps),
+     ps.at(-1),
+     arr.reduce((s,x)=>s+x.q,0)
+   ]);
+ }
+
+ if(k.length<25)return null;
+
+ let x=calcFrom(k.slice(-100));
+
+ x.tf=sec+"s";
+ x.raw=k;
+
+ return x;
+}
+
+function f(x){
+ if(x==null||!isFinite(x))return "—";
+
+ return Number(x).toLocaleString(
+   "ru-RU",
+   {maximumFractionDigits:8}
+ );
+}
+
+function sigClass(s){
+ return s.toLowerCase();
+}
+
+function rating(score){
+
+ let n=Math.abs(score);
+
+ if(n>=85)return "A+";
+ if(n>=70)return "A";
+ if(n>=55)return "B";
+
+ return "C";
+}
+
+function setDecision(x,mtf){
+
+ let aligned=mtf.filter(
+   z=>z[1].sig===x.sig
+ ).length;
+
+ let agreement=aligned/Math.max(1,mtf.length);
+
+ let rrOK=true;
+
+ let decision="WAIT";
+ let text="🟡 ЖДАТЬ";
+
+ if(
+   Math.abs(x.score)>=75 &&
+   agreement>=0.6 &&
+   x.vr>=1.05 &&
+   x.structure!=="RANGE"
+ ){
+   decision="ENTER";
+   text="🟢 ВХОД";
+ }
+
+ if(
+   Math.abs(x.score)<50 ||
+   agreement<0.4
+ ){
+   decision="NO";
+   text="🔴 НЕ ВХОДИТЬ";
+ }
+
+ if(
+   x.vr<0.55 ||
+   x.structure==="RANGE"
+ ){
+   decision="NO";
+   text="🔴 НЕ ВХОДИТЬ";
+ }
+
+ $("decision").textContent=text;
+
+ $("decision").className=
+   "status "+
+   (
+     decision==="ENTER"
+       ?"enter":
+     decision==="NO"
+       ?"noenter":
+       "waitbox"
+   );
+
+ return {
+   decision,
+   agreement
+ };
+}
+
+function reasonText(x,mtf){
+
+ let a=[];
+
+ a.push(
+   x.trend==="UP"
+     ?"Тренд восходящий ✓"
+     :x.trend==="DOWN"
+       ?"Тренд нисходящий ✓"
+       :"Тренд не определён ⚠️"
+ );
+
+ a.push(
+   x.structure==="BULLISH"
+     ?"Структура бычья ✓"
+     :x.structure==="BEARISH"
+       ?"Структура медвежья ✓"
+       :"Структура боковая ⚠️"
+ );
+
+ a.push(
+   x.vr>=1.2
+     ?"Объём подтверждает движение ✓"
+     :x.vr<0.65
+       ?"Объём слабый ⚠️"
+       :"Объём обычный"
+ );
+
+ a.push(
+   "MTF совпадение: "+
+   mtf.filter(z=>z[1].sig===x.sig).length+
+   "/"+
+   mtf.length
+ );
+
+ a.push(
+   "Smart Score: "+
+   x.score+
+   "/100"
+ );
+
+ a.push(
+   "Рейтинг: "+
+   rating(x.score)
+ );
+
+ return a.join("<br>");
+}
+
+function renderMain(x){
+
+ $("p").textContent=f(x.p);
+ $("r").textContent=x.R.toFixed(1);
+ $("e20").textContent=f(x.e20);
+ $("e50").textContent=f(x.e50);
+ $("m").textContent=x.M.hist.toFixed(6);
+ $("v").textContent=f(x.vol);
+ $("atr").textContent=f(x.atr);
+ $("structure").textContent=x.structure;
+
+ $("sig").textContent=x.sig;
+
+ $("sig").className=
+   "signal "+
+   sigClass(x.sig);
+
+ $("strength").textContent=
+   "Smart Score: "+
+   x.score+
+   "/100 · "+
+   rating(x.score);
+
+ $("fill").style.width=
+   ((x.score+100)/2)+"%";
+
+ let risk=x.atr||x.p*0.005;
+
+ let entry=x.p;
+
+ let sl,tp1,tp2;
+
+ if(x.sig==="BUY"){
+
+   sl=entry-risk*1.2;
+   tp1=entry+risk*1.2;
+   tp2=entry+risk*2.2;
+
+ }else if(x.sig==="SELL"){
+
+   sl=entry+risk*1.2;
+   tp1=entry-risk*1.2;
+   tp2=entry-risk*2.2;
+
+ }else{
+
+   sl=entry-risk;
+   tp1=entry+risk;
+   tp2=entry+risk*2;
+ }
+
+ $("entry").textContent=f(entry);
+ $("sl").textContent=f(sl);
+ $("tp1").textContent=f(tp1);
+ $("tp2").textContent=f(tp2);
+
+ let reward=Math.abs(tp2-entry);
+ let riskValue=Math.abs(entry-sl);
+
+ $("rr").textContent=
+   "R/R: 1:"+
+   (riskValue?(
+     reward/riskValue
+   ).toFixed(2):"—");
+}
+
+function drawChart(rows){
+
+ const c=$("chart");
+
+ if(!c)return;
+
+ const box=c.parentElement;
+ const dpr=devicePixelRatio||1;
+
+ const w=box.clientWidth;
+ const h=box.clientHeight;
+
+ c.width=w*dpr;
+ c.height=h*dpr;
+
+ const ctx=c.getContext("2d");
+
+ ctx.scale(dpr,dpr);
+ ctx.clearRect(0,0,w,h);
+
+ if(!rows||rows.length<2){
+
+   ctx.fillStyle="#9eabc5";
+   ctx.font="14px sans-serif";
+   ctx.fillText(
+     "Нажми АНАЛИЗ",
+     16,
+     30
+   );
+
+   return;
+ }
+
+ const ps=rows.map(
+   x=>x[4]||x[1]
+ );
+
+ const min=Math.min(...ps);
+ const max=Math.max(...ps);
+
+ const pad=20;
+
+ ctx.strokeStyle="#2a3550";
+
+ for(let i=1;i<5;i++){
+
+   let y=
+     pad+
+     (h-2*pad)*i/5;
+
+   ctx.beginPath();
+   ctx.moveTo(0,y);
+   ctx.lineTo(w,y);
+   ctx.stroke();
+ }
+
+ ctx.strokeStyle="#6ea8fe";
+ ctx.lineWidth=2;
+
+ ctx.beginPath();
+
+ ps.forEach((p,i)=>{
+
+   let x=
+     i*(w-1)/(ps.length-1);
+
+   let y=
+     pad+
+     (max-p)/
+     (max-min||1)*
+     (h-2*pad);
+
+   i
+     ?ctx.lineTo(x,y)
+     :ctx.moveTo(x,y);
+ });
+
+ ctx.stroke();
+}
+
+function setTF(tf){
+
+ selectedTF=tf;
+
+ document
+   .querySelectorAll("#tfbar button")
+   .forEach(
+     b=>
+       b.classList.toggle(
+         "active",
+         b.dataset.tf===tf
+       )
+   );
+
+ $("chartTf").textContent=tf;
+
+ drawChart(chartRows);
+
+ let z=lastRows.find(
+   a=>a[0]===tf
+ );
+
+ if(z)renderMain(z[1]);
+}
+
+async function go(){
+
+ let s=$("s").value;
+
+ $("st").textContent=
+   "Получаю данные Binance…";
+
+ $("sig").textContent="…";
+
+ try{
+
+   startLive();
+
+   let normalTF=[
+     "1m",
+     "3m",
+     "5m",
+     "15m",
+     "1h",
+     "4h"
+   ];
+
+   let rows=await Promise.all(
+     normalTF.map(
+       async tf=>{
+
+         let raw=
+           await get(s,tf);
+
+         return [
+           tf,
+           calcFrom(raw),
+           raw
+         ];
+       }
+     )
+   );
+
+   let a15=shortCalc(s,15);
+   let a30=shortCalc(s,30);
+
+   if(a15)
+     rows.unshift([
+       "15s",
+       a15,
+       a15.raw
+     ]);
+
+   if(a30)
+     rows.splice(
+       a15?1:0,
+       0,
+       [
+         "30s",
+         a30,
+         a30.raw
+       ]
+     );
+
+   lastRows=
+     rows.map(
+       x=>[x[0],x[1]]
+     );
+
+   let main=
+     rows.find(
+       x=>x[0]===selectedTF
+     )||
+     rows.find(
+       x=>x[0]==="15m"
+     )||
+     rows[0];
+
+   chartRows=
+     main[2]
+       .slice(-100);
+
+   drawChart(chartRows);
+
+   renderMain(main[1]);
+
+   let html="";
+
+   for(
+     const [tf,x] of rows
+   ){
+
+     html+=`
+     <tr>
+       <td>${tf}</td>
+       <td>${x.R.toFixed(1)}</td>
+       <td>${x.trend}</td>
+       <td>${x.M.hist.toFixed(4)}</td>
+       <td>${x.vr.toFixed(2)}×</td>
+       <td>${x.score>0?"+":""}${x.score}</td>
+       <td class="${sigClass(x.sig)}">
+         ${x.sig}
+       </td>
+     </tr>`;
+   }
+
+   $("tb").innerHTML=html;
+
+   let decision=
+     setDecision(
+       main[1],
+       rows
+     );
+
+   $("reason").innerHTML=
+     reasonText(
+       main[1],
+       rows
+     );
+
+   $("st").textContent=
+     "Анализ готов · "+
+     new Date().toLocaleTimeString();
+
+ }catch(e){
+
+   console.error(e);
+
+   $("st").textContent=
+     "Ошибка: "+e.message;
+
+   $("decision").textContent=
+     "🔴 ОШИБКА";
+
+   $("decision").className=
+     "status noenter";
+ }
+}
+
+function startLive(){
+
+ let s=$("s").value;
+
+ if(socket){
+
+   try{
+     socket.close();
+   }catch(e){}
+ }
+
+ live[s]={
+   ticks:[]
+ };
+
+ socket=
+   new WebSocket(
+     WS+
+     s.toLowerCase()+
+     "@trade"
+   );
+
+ socket.onopen=()=>{
+
+   $("st").textContent=
+     "LIVE подключён · собираю реальные 15s/30s свечи";
+ };
+
+ socket.onmessage=e=>{
+
+   let d=JSON.parse(e.data);
+
+   let now=Date.now();
+
+   if(!live[s])
+     live[s]={ticks:[]};
+
+   live[s].ticks.push({
+     t:now,
+     p:+d.p,
+     q:+d.q
+   });
+
+   live[s].ticks=
+     live[s].ticks.filter(
+       x=>
+         now-x.t<
+         15*60*1000
+     );
+
+ };
+
+ socket.onerror=()=>{
+
+   $("st").textContent=
+     "LIVE: ошибка соединения";
+ };
+}
+
 setTF("15m");
-</script></body></html>
+
+</script>
+
+</body>
+</html>
